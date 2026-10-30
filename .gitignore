@@ -1,0 +1,4 @@
+.env
+.canvas_downloader.json
+*.part
+__pycache__/
