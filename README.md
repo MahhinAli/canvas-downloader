@@ -16,9 +16,16 @@ cd canvas-downloader
 python canvas_download.py
 ```
 
-The first time you run it, it asks for your Canvas URL and an access token and
-saves them to `~/.canvas_downloader.json`. After that it shows a numbered list of
-your courses and you pick one.
+The first time you run it, it asks for your Canvas URL and an access token
+(and shows you how to get one), then saves them to `config.ini` in this folder.
+After that it shows a numbered list of your courses and you pick one.
+
+Prefer editing a file? Copy `config.example.ini` to `config.ini` and fill it in.
+It has step-by-step instructions for each setting.
+
+> **Your token stays private.** `config.ini` is in `.gitignore`, so it is never
+> committed or pushed. Never paste your token into `config.example.ini`, an issue,
+> or a pull request.
 
 ## Usage
 
@@ -27,7 +34,7 @@ python canvas_download.py              # pick from a list
 python canvas_download.py 12345        # by course id
 python canvas_download.py https://school.instructure.com/courses/12345
 python canvas_download.py all          # every active course
-python canvas_download.py --setup      # change your URL / token / save folder
+python canvas_download.py --setup      # rewrite config.ini (URL / token / save folder)
 ```
 
 On Windows you can double-click `canvas-download.bat`.
@@ -56,9 +63,10 @@ Leave off `/courses/...`, `/login`, and any trailing slash.
 ### 2. An access token
 
 1. Log in to Canvas and open **Account → Settings**.
+   (Click your profile picture, top left.)
 2. Scroll to **Approved Integrations** and click **+ New Access Token**.
 3. Give it a name (e.g. "file downloader") and, optionally, an expiry date.
-4. Copy the token straight away. Canvas only shows it once.
+4. Click **Generate Token** and copy it straight away. Canvas only shows it once.
 
 The token acts as you, so it can see exactly what you can see in Canvas, nothing more.
 Treat it like a password. If it ever leaks, delete it on the same settings page.
@@ -71,11 +79,13 @@ Treat it like a password. If it ever leaks, delete it on the same settings page.
 
 Pick whichever suits you. They're checked in this order:
 
-1. **Environment variables:** `CANVAS_URL` and `CANVAS_TOKEN`. Handy for scripts
-   and scheduled tasks.
-2. **A `.env` file** next to `canvas_download.py`. Copy `.env.example` to `.env`
-   and fill it in. `.env` is in `.gitignore`, so it won't get committed.
-3. **`~/.canvas_downloader.json`**, the file `--setup` writes. You can also point it at
+1. **Environment variables:** `CANVAS_URL`, `CANVAS_TOKEN` and optionally
+   `CANVAS_SAVE_DIR`. Handy for scripts and scheduled tasks.
+2. **`config.ini`** next to `canvas_download.py`, the file `--setup` writes.
+   Copy `config.example.ini` to make one by hand. It's in `.gitignore`.
+3. **A `.env` file** next to `canvas_download.py` with `CANVAS_URL=` /
+   `CANVAS_TOKEN=` lines. Also in `.gitignore`.
+4. **`~/.canvas_downloader.json`**, used by older versions. You can also point it at
    a `.env` that lives somewhere else:
 
    ```json
@@ -87,8 +97,7 @@ Pick whichever suits you. They're checked in this order:
 
 ### Changing where files go
 
-Set `CANVAS_SAVE_DIR` (in the environment or `.env`), or `save_dir` in
-`~/.canvas_downloader.json`. Each course still gets its own subfolder.
+Set `save_folder` in `config.ini` (or `CANVAS_SAVE_DIR` in the environment). Each course still gets its own subfolder.
 
 ## Tweaking the script
 

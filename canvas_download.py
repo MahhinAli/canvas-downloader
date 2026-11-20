@@ -5,12 +5,13 @@
     python canvas_download.py 12345        by course id
     python canvas_download.py <course url> e.g. https://school.instructure.com/courses/12345
     python canvas_download.py all          every active course
-    python canvas_download.py --setup      (re)create the settings file
+    python canvas_download.py --setup      (re)create config.ini
 
-Credentials are looked up in this order:
-  1. CANVAS_URL / CANVAS_TOKEN environment variables
-  2. a .env file next to this script, or the one named by "env_file" in settings
-  3. "base_url" / "token" in ~/.canvas_downloader.json
+Settings are looked up in this order (first one found wins):
+  1. CANVAS_URL / CANVAS_TOKEN / CANVAS_SAVE_DIR environment variables
+  2. config.ini next to this script (see config.example.ini)
+  3. a .env file next to this script, or the one named by "env_file" in settings
+  4. "base_url" / "token" in ~/.canvas_downloader.json (older versions)
 """
 
 import json
@@ -25,6 +26,25 @@ HOME = os.path.expanduser("~")
 SETTINGS_PATH = os.path.join(HOME, ".canvas_downloader.json")
 DEFAULT_SAVE_DIR = os.path.join(HOME, "Canvas")
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH = os.path.join(SCRIPT_DIR, "config.ini")
+
+# config.ini key -> internal name
+CONFIG_KEYS = {"canvas_url": "CANVAS_URL", "api_token": "CANVAS_TOKEN", "save_folder": "CANVAS_SAVE_DIR"}
+
+TOKEN_HELP = """\
+How to get your Canvas access token:
+  1. Log in to Canvas in your browser.
+  2. Click "Account" (your profile picture, top left) -> "Settings".
+  3. Scroll down to "Approved Integrations".
+  4. Click "+ New Access Token".
+  5. Purpose: anything, e.g. "file downloader". Expiry date is optional.
+  6. Click "Generate Token" and copy it right away (Canvas only shows it once).
+
+Treat the token like a password. It is saved only in config.ini on this
+computer, which is in .gitignore so it never gets committed.
+No "+ New Access Token" button? Your school has disabled student tokens;
+ask your school's IT / Canvas admins.
+"""
 
 
 def read_env_file(path):
@@ -49,6 +69,8 @@ def load_settings():
 
     env = read_env_file(os.path.join(SCRIPT_DIR, ".env"))
     env.update(read_env_file(settings.get("env_file")))
+    config = read_env_file(CONFIG_PATH)
+    env.update({CONFIG_KEYS[k]: v for k, v in config.items() if k in CONFIG_KEYS and v})
     env.update({k: v for k, v in os.environ.items() if k.startswith("CANVAS_")})
 
     url = env.get("CANVAS_URL") or settings.get("base_url")
@@ -64,16 +86,34 @@ def load_settings():
 
 def run_setup():
     print("Canvas downloader setup\n")
-    url = input("Canvas URL (e.g. https://myschool.instructure.com): ").strip().rstrip("/")
+    print("Your Canvas URL is the address bar when logged in, up to the domain,")
+    print("e.g. https://yourschool.instructure.com or https://canvas.yourschool.edu\n")
+    url = ""
+    while not url:
+        url = input("Canvas URL: ").strip().rstrip("/")
     if not url.startswith("http"):
         url = "https://" + url
-    print("\nYou can make a token under Account > Settings > + New Access Token.")
-    token = input("Access token: ").strip()
-    save_dir = input(f"Save courses in [{DEFAULT_SAVE_DIR}]: ").strip() or DEFAULT_SAVE_DIR
+    url = re.sub(r"(https?://[^/]+).*", r"\1", url)  # drop /courses/..., /login etc.
 
-    with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
-        json.dump({"base_url": url, "token": token, "save_dir": save_dir}, f, indent=2)
-    print(f"Saved to {SETTINGS_PATH}\n")
+    print("\n" + TOKEN_HELP)
+    token = ""
+    while not token:
+        token = input("Paste your access token: ").strip()
+    save_dir = input(f"\nSave courses in [{DEFAULT_SAVE_DIR}]: ").strip()
+
+    lines = [
+        "# Canvas downloader settings - created by --setup.",
+        "# Private: this file is in .gitignore. Never commit or share it.",
+        "# See config.example.ini for what each setting means.",
+        "",
+        f"canvas_url = {url}",
+        f"api_token = {token}",
+        f"save_folder = {save_dir}",
+        "",
+    ]
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+    print(f"Saved to {CONFIG_PATH}\n")
 
 
 class CanvasAPI:
